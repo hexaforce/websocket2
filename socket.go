@@ -1,7 +1,6 @@
 package main
 
 import (
-	// "flag"
 	"log"
 	"net/http"
 	"github.com/gorilla/websocket"
@@ -17,55 +16,55 @@ var (
 	}
 )
 
-// NewHub new socket.
-func NewSocket() *Hub {
-	return &Hub{
+// NewSocket new socket.
+func NewSocket() *Socket {
+	return &Socket{
 		broadcast:  make(chan []byte),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
+		register:   make(chan *Connection),
+		unregister: make(chan *Connection),
+		connections:    make(map[*Connection]bool),
 	}
 }
 
-// DialWs handles websocket requests from the peer.
-func (h *Hub) Dial(w http.ResponseWriter, r *http.Request) {
+func (h *Socket) open() {
+	for {
+		select {
+		case connection := <-h.register:
+			h.connections[connection] = true
+		case connection := <-h.unregister:
+			h.releaseClient(connection)
+		case message := <-h.broadcast:
+			for connection := range h.connections {
+				select {
+				case connection.send <- message:
+				default:
+					h.releaseClient(connection)
+				}
+			}
+		}
+	}
+}
+
+// dialUp handles websocket requests from the peer.
+func (h *Socket) dialUp(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: h, conn: conn, send: make(chan []byte, 256)}
-	client.hub.register <- client
+	connection := &Connection{socket: h, conn: conn, send: make(chan []byte, 256)}
+	connection.socket.register <- connection
 
 	// Allow collection of memory referenced by the caller by doing all work in new goroutines.
-	go client.writePump()
-	go client.readPump()
+	go connection.writePump()
+	go connection.readPump()
 
 }
 
-func (h *Hub) releaseClient(client *Client){
-	if _, ok := h.clients[client]; ok {
-		close(client.send)
-		delete(h.clients, client)
-	}
-}
-
-func (h *Hub) run() {
-	for {
-		select {
-		case client := <-h.register:
-			h.clients[client] = true
-		case client := <-h.unregister:
-			h.releaseClient(client)
-		case message := <-h.broadcast:
-			for client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					h.releaseClient(client)
-				}
-			}
-		}
+func (h *Socket) releaseConnection(connection *Connection){
+	if _, ok := h.connections[connection]; ok {
+		close(connection.send)
+		delete(h.connections, connection)
 	}
 }

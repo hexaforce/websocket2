@@ -3,11 +3,9 @@ package main
 import (
 	"bytes"
 	"log"
-	// "net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
-	// "github.com/hexaforce/websocket2"
 )
 
 var (
@@ -15,14 +13,14 @@ var (
 	space   = []byte{' '}
 )
 
-// readPump pumps messages from the websocket connection to the hub.
+// readPump pumps messages from the websocket connection to the Socket.
 //
 // The application runs readPump in a per-connection goroutine. 
-// The application  ensures that there is at most one reader on a connection by executing all reads from this goroutine.
-func (c *Client) readPump() {
+// The application ensures that there is at most one reader on a connection by executing all reads from this goroutine.
+func (c *Connection) readPump() {
 
 	defer func() {
-		c.hub.unregister <- c
+		c.socket.unregister <- c
 		c.conn.Close()
 	}()
 
@@ -38,16 +36,16 @@ func (c *Client) readPump() {
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		c.hub.broadcast <- message
+		c.socket.broadcast <- message
 	}
 
 }
 
-// writePump pumps messages from the hub to the websocket connection.
+// writePump pumps messages from the Socket to the websocket connection.
 //
 // A goroutine running writePump is started for each connection.
 // The  application ensures that there is at most one writer to a connection by executing all writes from this goroutine.
-func (c *Client) writePump() {
+func (c *Connection) writePump() {
 
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
@@ -61,7 +59,7 @@ func (c *Client) writePump() {
 		case message, ok := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				// The hub closed the channel.
+				// The Socket closed the channel.
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}

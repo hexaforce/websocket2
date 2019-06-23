@@ -9,26 +9,25 @@ import (
 
 )
 
-// Client is a middleman between the websocket connection and the hub.
-type Client struct {
-	hub *Hub
-	// hub *socket.Hub
+// Connection is a middleman between the websocket connection and the Socket.
+type Connection struct {
+	socket *Socket
 	// The websocket connection.
 	conn *websocket.Conn
 	// Buffered channel of outbound messages.
 	send chan []byte
 }
 
-// Hub maintains the set of active clients and broadcasts messages to the clients.
-type Hub struct {
-	// Registered clients.
-	clients map[*Client]bool
-	// Inbound messages from the clients.
+// Socket maintains the set of active connections and broadcasts messages to the connections.
+type Socket struct {
+	// Registered connections.
+	connections map[*Connection]bool
+	// Inbound messages from the connections.
 	broadcast chan []byte
-	// Register requests from the clients.
-	register chan *Client
-	// Unregister requests from clients.
-	unregister chan *Client
+	// Register requests from the connections.
+	register chan *Connection
+	// Unregister requests from connections.
+	unregister chan *Connection
 }
 
 const (
@@ -47,13 +46,13 @@ var addr = flag.String("addr", ":8080", "http service address")
 func main() {
 
 	flag.Parse()
-	hub := NewSocket()
-	go hub.run()
+	socket := NewSocket()
+	go socket.open()
 
 	http.HandleFunc("/", serveHome)
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		hub.Dial(w, r)
+		socket.dialUp(w, r)
 	})
 
 	log.Fatal("ListenAndServe: ", http.ListenAndServe(*addr, nil))
