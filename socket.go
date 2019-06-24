@@ -19,6 +19,7 @@ var (
 	}
 )
 
+// open open socket.
 func (s *Socket) open() {
 	for {
 		select {
