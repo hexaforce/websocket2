@@ -3,8 +3,10 @@ package main
 import (
 	"log"
 	"net/http"
+
 	"github.com/gorilla/websocket"
 )
+
 var (
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:    4096,
@@ -19,26 +21,26 @@ var (
 // NewSocket new socket.
 func NewSocket() *Socket {
 	return &Socket{
-		broadcast:  make(chan []byte),
-		register:   make(chan *Connection),
-		unregister: make(chan *Connection),
-		connections:    make(map[*Connection]bool),
+		broadcast:   make(chan []byte),
+		register:    make(chan *Connection),
+		unregister:  make(chan *Connection),
+		connections: make(map[*Connection]bool),
 	}
 }
 
-func (h *Socket) open() {
+func (s *Socket) open() {
 	for {
 		select {
-		case connection := <-h.register:
-			h.connections[connection] = true
-		case connection := <-h.unregister:
-			h.releaseClient(connection)
-		case message := <-h.broadcast:
-			for connection := range h.connections {
+		case connection := <-s.register:
+			s.connections[connection] = true
+		case connection := <-s.unregister:
+			s.releaseConnection(connection)
+		case message := <-s.broadcast:
+			for connection := range s.connections {
 				select {
 				case connection.send <- message:
 				default:
-					h.releaseClient(connection)
+					s.releaseConnection(connection)
 				}
 			}
 		}
@@ -46,14 +48,14 @@ func (h *Socket) open() {
 }
 
 // dialUp handles websocket requests from the peer.
-func (h *Socket) dialUp(w http.ResponseWriter, r *http.Request) {
+func (s *Socket) dialUp(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	connection := &Connection{socket: h, conn: conn, send: make(chan []byte, 256)}
+	connection := &Connection{socket: s, wsConn: conn, send: make(chan []byte, 256)}
 	connection.socket.register <- connection
 
 	// Allow collection of memory referenced by the caller by doing all work in new goroutines.
@@ -62,9 +64,9 @@ func (h *Socket) dialUp(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (h *Socket) releaseConnection(connection *Connection){
-	if _, ok := h.connections[connection]; ok {
+func (s *Socket) releaseConnection(connection *Connection) {
+	if _, ok := s.connections[connection]; ok {
 		close(connection.send)
-		delete(h.connections, connection)
+		delete(s.connections, connection)
 	}
 }

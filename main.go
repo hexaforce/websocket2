@@ -5,15 +5,15 @@ import (
 	"log"
 	"net/http"
 	"time"
-	"github.com/gorilla/websocket"
 
+	"github.com/gorilla/websocket"
 )
 
 // Connection is a middleman between the websocket connection and the Socket.
 type Connection struct {
 	socket *Socket
 	// The websocket connection.
-	conn *websocket.Conn
+	wsConn *websocket.Conn
 	// Buffered channel of outbound messages.
 	send chan []byte
 }
@@ -41,7 +41,7 @@ const (
 	maxMessageSize = 512
 )
 
-var addr = flag.String("addr", ":8080", "http service address")
+var addr = flag.String("addr", ":18080", "http service address")
 
 func main() {
 
@@ -51,7 +51,7 @@ func main() {
 
 	http.HandleFunc("/", serveHome)
 
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/rate", func(w http.ResponseWriter, r *http.Request) {
 		socket.dialUp(w, r)
 	})
 
@@ -60,7 +60,7 @@ func main() {
 }
 
 func serveHome(w http.ResponseWriter, r *http.Request) {
-	
+
 	log.Println(r.URL)
 	if r.URL.Path != "/" {
 		http.Error(w, "Not found", http.StatusNotFound)
