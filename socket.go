@@ -19,16 +19,6 @@ var (
 	}
 )
 
-// NewSocket new socket.
-func NewSocket() *Socket {
-	return &Socket{
-		broadcast:   make(chan []byte),
-		register:    make(chan *Connection),
-		unregister:  make(chan *Connection),
-		connections: make(map[*Connection]bool),
-	}
-}
-
 func (s *Socket) open() {
 	for {
 		select {
@@ -48,8 +38,8 @@ func (s *Socket) open() {
 	}
 }
 
-// DialUp handles websocket requests from the peer.
-func (s *Socket) DialUp(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+// dial handles websocket requests from the peer.
+func (s *Socket) dial(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

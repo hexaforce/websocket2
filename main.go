@@ -52,12 +52,19 @@ func main() {
 	go socket.open()
 
 	router := httprouter.New()
-	router.GET("/films", socket.DialUp)
-	// http.HandleFunc("/rate", func(w http.ResponseWriter, r *http.Request) {
-	// 	socket.dialUp(w, r)
-	// })
+	router.GET("/ws", socket.dial)
 
 	handler := cors.Default().Handler(router)
 	log.Fatal("ListenAndServe: ", http.ListenAndServe(*addr, handler))
 
+}
+
+// NewSocket new socket.
+func NewSocket() *Socket {
+	return &Socket{
+		broadcast:   make(chan []byte),
+		register:    make(chan *Connection),
+		unregister:  make(chan *Connection),
+		connections: make(map[*Connection]bool),
+	}
 }
