@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/julienschmidt/httprouter"
+	"github.com/rs/cors"
 )
 
 // Connection is a middleman between the websocket connection and the Socket.
@@ -49,27 +51,13 @@ func main() {
 	socket := NewSocket()
 	go socket.open()
 
-	http.HandleFunc("/", serveHome)
+	router := httprouter.New()
+	router.GET("/films", socket.DialUp)
+	// http.HandleFunc("/rate", func(w http.ResponseWriter, r *http.Request) {
+	// 	socket.dialUp(w, r)
+	// })
 
-	http.HandleFunc("/rate", func(w http.ResponseWriter, r *http.Request) {
-		socket.dialUp(w, r)
-	})
-
-	log.Fatal("ListenAndServe: ", http.ListenAndServe(*addr, nil))
-
-}
-
-func serveHome(w http.ResponseWriter, r *http.Request) {
-
-	log.Println(r.URL)
-	if r.URL.Path != "/" {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	http.ServeFile(w, r, "home.html")
+	handler := cors.Default().Handler(router)
+	log.Fatal("ListenAndServe: ", http.ListenAndServe(*addr, handler))
 
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/julienschmidt/httprouter"
 )
 
 var (
@@ -47,8 +48,8 @@ func (s *Socket) open() {
 	}
 }
 
-// dialUp handles websocket requests from the peer.
-func (s *Socket) dialUp(w http.ResponseWriter, r *http.Request) {
+// DialUp handles websocket requests from the peer.
+func (s *Socket) DialUp(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
