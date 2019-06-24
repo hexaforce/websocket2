@@ -48,7 +48,12 @@ var addr = flag.String("addr", ":18080", "http service address")
 func main() {
 
 	flag.Parse()
-	socket := NewSocket()
+	socket := &Socket{
+		broadcast:   make(chan []byte),
+		register:    make(chan *Connection),
+		unregister:  make(chan *Connection),
+		connections: make(map[*Connection]bool),
+	}
 	go socket.open()
 
 	router := httprouter.New()
@@ -57,14 +62,4 @@ func main() {
 	handler := cors.Default().Handler(router)
 	log.Fatal("ListenAndServe: ", http.ListenAndServe(*addr, handler))
 
-}
-
-// NewSocket new socket.
-func NewSocket() *Socket {
-	return &Socket{
-		broadcast:   make(chan []byte),
-		register:    make(chan *Connection),
-		unregister:  make(chan *Connection),
-		connections: make(map[*Connection]bool),
-	}
 }
